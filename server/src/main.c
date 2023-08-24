@@ -26,6 +26,7 @@ int pollfd_count = 0;
 struct pollfd pollfds[256];
 
 char connect_msg[64] = "Successfully reached server\n";
+char buffer[256];
 
 void init_socket() {
     server_socket = socket(AF_INET, SOCK_STREAM, 0);
@@ -78,7 +79,7 @@ int main(int argc, char* argv[]) {
 
     bool running = true;
     while (running) {
-        int events = poll(pollfds, pollfd_count, 500);
+        int events = poll(pollfds, pollfd_count, 100);
 
         if (events == 0)
             continue;
@@ -116,10 +117,16 @@ int main(int argc, char* argv[]) {
         // clients
         for (int i = 0; i < client_count; i++) {
             client_t client = clients[i];
-            if (pollfds[client.pollfd_idx].revents & POLLIN) {
-                char buf[256];
-                recv(client.socket, buf, sizeof(buf), 0);
-                printf("%s", buf);
+            int revents = pollfds[client.pollfd_idx].revents;
+            
+            if (revents & POLLIN) {
+                recv(client.socket, buffer, sizeof(buffer), 0);
+                printf("%d: %s", i, buffer);
+            }
+
+            if (revents & (POLLERR | POLLHUP)) {
+                close(client.socket);
+                printf("Client %d disconnected\n", i);
             }
         }
     }
