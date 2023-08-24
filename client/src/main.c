@@ -30,6 +30,8 @@ int main() {
 
     printf("%s", buf);
 
+    char msg_buf[256];
+
     close(sock);
 
     return 0;
