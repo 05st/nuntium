@@ -30,7 +30,11 @@ int main() {
 
     printf("%s", buf);
 
+    fflush(stdin);
+
     char msg_buf[256];
+    fgets(msg_buf, sizeof(msg_buf), stdin);
+    send(sock, msg_buf, sizeof(msg_buf), 0);
 
     close(sock);
 

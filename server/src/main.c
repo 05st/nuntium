@@ -54,20 +54,6 @@ void init_pollfds() {
     pollfd_count = 2;
 }
 
-/*
-void* accept_pollfds() {
-    while (true) {
-        int client_socket = accept(server_socket, NULL, NULL);
-
-        clients[client_count].id = client_count;
-        clients[client_count].socket = client_socket;
-
-
-        client_count++;
-    }
-}
-*/
-
 void cleanup() {
     for (int i = 0; i < client_count; i++)
         close(clients[i].socket);
@@ -92,7 +78,7 @@ int main(int argc, char* argv[]) {
 
     bool running = true;
     while (running) {
-        int events = poll(pollfds, 1, 500);
+        int events = poll(pollfds, pollfd_count, 500);
 
         if (events == 0)
             continue;
@@ -131,7 +117,9 @@ int main(int argc, char* argv[]) {
         for (int i = 0; i < client_count; i++) {
             client_t client = clients[i];
             if (pollfds[client.pollfd_idx].revents & POLLIN) {
-
+                char buf[256];
+                recv(client.socket, buf, sizeof(buf), 0);
+                printf("%s", buf);
             }
         }
     }
