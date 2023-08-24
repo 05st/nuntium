@@ -4,6 +4,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <unistd.h>
 
 int main() {
     printf("%s", "Nuntium Client\nEnter Port: ");
@@ -29,11 +30,7 @@ int main() {
 
     printf("%s", buf);
 
-    while (true) {
-        printf("%s", "Enter Message:\n");
-        fgets(buf, 256, stdin);
-        send(sock, buf, sizeof(buf), 0);
-    }
+    close(sock);
 
     return 0;
 }
