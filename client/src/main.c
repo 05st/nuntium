@@ -5,6 +5,16 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <unistd.h>
+#include <pthread.h>
+
+int sock;
+void* handle_recvs() {
+    char buf[256];
+    while (true) {
+        recv(sock, buf, sizeof(buf), 0);
+        printf("%s", buf);
+    }
+}
 
 int main() {
     printf("%s", "Nuntium Client\nEnter Port: ");
@@ -12,7 +22,7 @@ int main() {
     int port;
     scanf("%d", &port);
 
-    int sock = socket(AF_INET, SOCK_STREAM, 0);
+    sock = socket(AF_INET, SOCK_STREAM, 0);
 
     struct sockaddr_in addr;
     addr.sin_family = AF_INET;
@@ -32,10 +42,16 @@ int main() {
 
     fflush(stdin);
 
-    char msg_buf[256];
-    fgets(msg_buf, sizeof(msg_buf), stdin);
-    send(sock, msg_buf, sizeof(msg_buf), 0);
+    pthread_t tid;
+    pthread_create(&tid, NULL, handle_recvs, NULL);
 
+    while (true) {
+        char msg_buf[256];
+        fgets(msg_buf, sizeof(msg_buf), stdin);
+        send(sock, msg_buf, sizeof(msg_buf), 0);
+    }
+
+    pthread_cancel(tid);
     close(sock);
 
     return 0;

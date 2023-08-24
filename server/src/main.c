@@ -55,6 +55,15 @@ void init_pollfds() {
     pollfd_count = 2;
 }
 
+void relay_message(int sender) {
+    for (int i = 0; i < client_count; i++) {
+        if (i == sender) continue;
+
+        client_t client = clients[i];
+        send(client.socket, buffer, sizeof(buffer), 0);
+    }
+}
+
 void cleanup() {
     for (int i = 0; i < client_count; i++)
         close(clients[i].socket);
@@ -121,6 +130,7 @@ int main(int argc, char* argv[]) {
             
             if (revents & POLLIN) {
                 recv(client.socket, buffer, sizeof(buffer), 0);
+                relay_message(i);
                 printf("%d: %s", i, buffer);
             }
 
