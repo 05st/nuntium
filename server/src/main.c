@@ -9,11 +9,17 @@
 
 #include <pthread.h>
 
+typedef struct {
+    int id;
+    int socket;
+    pthread_t thread;
+} client_t;
+
 int port;
 int server_socket;
 
 int client_count = 0;
-int client_socket[256];
+client_t clients[256];
 
 char connect_msg[64] = "Successfully reached server\n";
 
@@ -29,20 +35,31 @@ void init_socket() {
     printf("Server socket created and bound to 0.0.0.0:%d\n", port);
 }
 
+void* handle_client(void* arg) {
+    client_t* client_ptr = (client_t*)arg;
+    printf("Handling client %d\n", client_ptr->id);
+
+    pthread_exit(NULL);
+}
+
 void* accept_connections() {
     listen(server_socket, 2);
     printf("%s", "Listening for connections\n");
 
     while (true) {
-        client_socket[client_count] = accept(server_socket, NULL, NULL);
+        int client_socket = accept(server_socket, NULL, NULL);
 
-        send(client_socket[client_count], connect_msg, sizeof(connect_msg), 0);
-        printf("Accepted client %d connection\n", client_count++);
+        clients[client_count].id = client_count;
+        clients[client_count].socket = client_socket;
+
+        printf("Accepted client %d connection\n", client_count);
+        send(clients[client_count].socket, connect_msg, sizeof(connect_msg), 0);
+
+        pthread_create(&clients[client_count].thread, NULL, handle_client, &clients[client_count]);
+        client_count++;
     }
-}
 
-void* handle_client() {
-
+    pthread_exit(NULL);
 }
 
 int main(int argc, char* argv[]) {
@@ -72,8 +89,6 @@ int main(int argc, char* argv[]) {
             case 0:
             stop = true;
             break;
-            default:
-            break;
         }
 
         if (stop)
@@ -81,8 +96,11 @@ int main(int argc, char* argv[]) {
     }
 
     pthread_cancel(t_id);
-    for (int i = 0; i < client_count; i++)
-        close(client_socket[i]);
+    for (int i = 0; i < client_count; i++) {
+        client_t client = clients[i];
+        close(client.socket);
+        pthread_cancel(client.thread);
+    }
     close(server_socket);
 
     return 0;
