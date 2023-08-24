@@ -5,7 +5,7 @@ run: nuntium-server
 	./nuntium-server.out $(run_port)
 
 nuntium-server:
-	gcc src/*.c -o nuntium-server.out
+	cc -lpthread src/*.c -o nuntium-server.out
 
 clean:
 	rm nuntium-server.out

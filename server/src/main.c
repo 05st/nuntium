@@ -38,8 +38,6 @@ void init_socket() {
 void* handle_client(void* arg) {
     client_t* client_ptr = (client_t*)arg;
     printf("Handling client %d\n", client_ptr->id);
-
-    pthread_exit(NULL);
 }
 
 void* accept_connections() {
@@ -58,8 +56,6 @@ void* accept_connections() {
         pthread_create(&clients[client_count].thread, NULL, handle_client, &clients[client_count]);
         client_count++;
     }
-
-    pthread_exit(NULL);
 }
 
 int main(int argc, char* argv[]) {
