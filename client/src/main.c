@@ -8,8 +8,11 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <unistd.h>
+#include <arpa/inet.h>
 
 int port;
+char* addr;
+
 int client_socket;
 struct pollfd pollfds[2];
 
@@ -21,7 +24,7 @@ int init_socket() {
     struct sockaddr_in server_address;
     server_address.sin_family = AF_INET;
     server_address.sin_port = htons(port);
-    server_address.sin_addr.s_addr = INADDR_ANY;
+    server_address.sin_addr.s_addr = inet_addr(addr);
 
     return connect(client_socket, (struct sockaddr*)&server_address, sizeof(server_address));
 }
@@ -37,18 +40,19 @@ void init_pollfds() {
 }
 
 int main(int argc, char* argv[]) {
-    if (argc != 2) {
-        if (argc < 2)
+    if (argc != 3) {
+        if (argc < 3)
             printf("%s", "Too few arguments supplied.\n");
-        if (argc > 2)
+        if (argc > 3)
             printf("%s", "Too many arguments supplied.\n");
-        printf("Usage: %s <port>\n", argv[0]);
+        printf("Usage: %s <ip> <port>\n", argv[0]);
         exit(EXIT_FAILURE);
     }
 
     printf("%s", "Nuntium Client\n");
 
-    port = atoi(argv[1]);
+    port = atoi(argv[2]);
+    addr = argv[1];
 
     if (init_socket() < 0) {
         printf("%s", "Couldn't connect to server\n");
