@@ -8,8 +8,6 @@
 #include <netinet/in.h>
 #include <unistd.h>
 
-#include <pthread.h>
-
 typedef struct {
     int client_idx;
     int pollfd_idx;

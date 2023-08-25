@@ -1,58 +1,87 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
+#include <string.h>
+
 #include <sys/types.h>
+#include <sys/poll.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <unistd.h>
-#include <pthread.h>
 
-int sock;
-void* handle_recvs() {
-    char buf[256];
-    while (true) {
-        recv(sock, buf, sizeof(buf), 0);
-        printf("%s", buf);
-    }
+int port;
+int client_socket;
+struct pollfd pollfds[2];
+
+char buffer[256];
+
+int init_socket() {
+    client_socket = socket(AF_INET, SOCK_STREAM, 0);
+
+    struct sockaddr_in server_address;
+    server_address.sin_family = AF_INET;
+    server_address.sin_port = htons(port);
+    server_address.sin_addr.s_addr = INADDR_ANY;
+
+    return connect(client_socket, (struct sockaddr*)&server_address, sizeof(server_address));
 }
 
-int main() {
-    printf("%s", "Nuntium Client\nEnter Port: ");
+void init_pollfds() {
+    // stdin
+    pollfds[0].fd = STDIN_FILENO;
+    pollfds[0].events = POLLIN;
 
-    int port;
-    scanf("%d", &port);
+    // socket
+    pollfds[1].fd = client_socket;
+    pollfds[1].events = POLLIN;
+}
 
-    sock = socket(AF_INET, SOCK_STREAM, 0);
+int main(int argc, char* argv[]) {
+    if (argc != 2) {
+        if (argc < 2)
+            printf("%s", "Too few arguments supplied.\n");
+        if (argc > 2)
+            printf("%s", "Too many arguments supplied.\n");
+        printf("Usage: %s <port>\n", argv[0]);
+        exit(EXIT_FAILURE);
+    }
 
-    struct sockaddr_in addr;
-    addr.sin_family = AF_INET;
-    addr.sin_port = htons(port);
-    addr.sin_addr.s_addr = INADDR_ANY;
+    printf("%s", "Nuntium Client\n");
 
-    int suc = connect(sock, (struct sockaddr*)&addr, sizeof(addr));
-    if (suc < 0) {
+    port = atoi(argv[1]);
+
+    if (init_socket() < 0) {
         printf("%s", "Couldn't connect to server\n");
         exit(EXIT_FAILURE);
     }
 
-    char buf[256];
-    recv(sock, buf, sizeof(buf), 0);
-
-    printf("%s", buf);
-
-    fflush(stdin);
-
-    pthread_t tid;
-    pthread_create(&tid, NULL, handle_recvs, NULL);
+    init_pollfds();
 
     while (true) {
-        char msg_buf[256];
-        fgets(msg_buf, sizeof(msg_buf), stdin);
-        send(sock, msg_buf, sizeof(msg_buf), 0);
-    }
+        int events = poll(pollfds, 2, 100);
 
-    pthread_cancel(tid);
-    close(sock);
+        if (events == 0)
+            continue;
+
+        // stdin
+        if (pollfds[0].revents & POLLIN) {
+            fgets(buffer, sizeof(buffer), stdin);
+
+            if (strcmp(buffer, "/exit\n\0") == 0)
+                break;
+
+            send(client_socket, buffer, sizeof(buffer), 0);
+        }
+
+        // socket
+        if (pollfds[1].revents & POLLIN) {
+            recv(client_socket, buffer, sizeof(buffer), 0);
+
+            printf("%s", buffer);
+        }
+    }
+    
+    close(client_socket);
 
     return 0;
 }
