@@ -10,6 +10,8 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 
+#include <ncurses.h>
+
 int port;
 char* addr;
 
@@ -49,30 +51,37 @@ int main(int argc, char* argv[]) {
         exit(EXIT_FAILURE);
     }
 
-    printf("%s", "Nuntium Client\n");
+    initscr();
+
+    printw("%s", "Nuntium Client\n");
+    refresh();
 
     port = atoi(argv[2]);
     addr = argv[1];
 
     if (init_socket() < 0) {
-        printf("%s", "Couldn't connect to server\n");
+        printw("%s", "Couldn't connect to server\n");
+        refresh();
         exit(EXIT_FAILURE);
     }
 
     init_pollfds();
 
     while (true) {
-        int events = poll(pollfds, 2, 100);
+        int events = poll(pollfds, 2, 500);
 
         if (events == 0)
             continue;
 
         // stdin
         if (pollfds[0].revents & POLLIN) {
-            fgets(buffer, sizeof(buffer), stdin);
+            getstr(buffer);
+            refresh();
 
-            if (strcmp(buffer, "/exit\n\0") == 0)
+            if (strcmp(buffer, "/exit") == 0)
                 break;
+            
+            sprintf(buffer, "%s\n", buffer);
 
             send(client_socket, buffer, sizeof(buffer), 0);
         }
@@ -81,10 +90,12 @@ int main(int argc, char* argv[]) {
         if (pollfds[1].revents & POLLIN) {
             recv(client_socket, buffer, sizeof(buffer), 0);
 
-            printf("%s", buffer);
+            printw("%s", buffer);
+            refresh();
         }
     }
-    
+
+    endwin();
     close(client_socket);
 
     return 0;

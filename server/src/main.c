@@ -9,8 +9,7 @@
 #include <unistd.h>
 
 typedef struct {
-    int client_idx;
-    int pollfd_idx;
+    struct pollfd* pollfd_ptr;
     int socket;
 } client_t;
 
@@ -68,6 +67,25 @@ void cleanup() {
     close(server_socket);
 }
 
+void handle_disconnect(int idx) {
+    close(clients[idx].socket);
+
+    for (int i = idx + 1; i < client_count; i++) {
+        clients[i - 1] = clients[i];
+        // since we shift the pollfds array back as well
+        clients[i - 1].pollfd_ptr--;
+    }
+    client_count--;
+
+    int pollfd_idx = clients[idx].pollfd_ptr - pollfds; // bit of a hack maybe
+
+    for (int i = pollfd_idx + 1; i < pollfd_count; i++)
+        pollfds[i - 1] = pollfds[i];
+    pollfd_count--;
+
+    printf("Client %d disconnected\n", idx);
+}
+
 int main(int argc, char* argv[]) {
     if (argc != 2) {
         if (argc < 2)
@@ -86,7 +104,7 @@ int main(int argc, char* argv[]) {
 
     bool running = true;
     while (running) {
-        int events = poll(pollfds, pollfd_count, 100);
+        int events = poll(pollfds, pollfd_count, 500);
 
         if (events == 0)
             continue;
@@ -106,30 +124,35 @@ int main(int argc, char* argv[]) {
         // server (new connection)
         if (pollfds[1].revents & POLLIN) {
             client_t client;
-            client.client_idx = client_count;
-            client.pollfd_idx = pollfd_count;
             client.socket = accept(server_socket, NULL, NULL);
-
-            printf("Accepted client %d connection\n", client_count);
-            send(client.socket, connect_msg, sizeof(connect_msg), 0);
 
             struct pollfd conn;
             conn.fd = client.socket;
             conn.events = POLLIN;
 
-            clients[client_count++] = client;
-            pollfds[pollfd_count++] = conn;
+            pollfds[pollfd_count] = conn;
+
+            client.pollfd_ptr = &pollfds[pollfd_count];
+            clients[client_count] = client;
+
+            printf("Accepted client %d connection\n", client_count);
+            send(client.socket, connect_msg, sizeof(connect_msg), 0);
+
+            client_count++;
+            pollfd_count++;
         }
 
         // clients
         for (int i = 0; i < client_count; i++) {
             client_t client = clients[i];
-            int revents = pollfds[client.pollfd_idx].revents;
+
+            int revents = client.pollfd_ptr->revents;
 
             // client disconnected
             if (revents & (POLLERR | POLLHUP)) {
-                close(client.socket);
-                printf("Client %d disconnected\n", i);
+                handle_disconnect(i);
+                // don't want to skip the next client since handle_disconnect shifts the arrays back
+                i--;
                 continue;
             }
             

@@ -6,7 +6,7 @@ run: nuntium-client
 	./nuntium-client.out "$(run_ip)" $(run_port)
 
 nuntium-client:
-	cc src/*.c -o nuntium-client.out
+	cc -lncurses src/*.c -o nuntium-client.out
 
 clean:
 	rm nuntium-client.out
