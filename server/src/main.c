@@ -125,16 +125,18 @@ int main(int argc, char* argv[]) {
         for (int i = 0; i < client_count; i++) {
             client_t client = clients[i];
             int revents = pollfds[client.pollfd_idx].revents;
+
+            // client disconnected
+            if (revents & (POLLERR | POLLHUP)) {
+                close(client.socket);
+                printf("Client %d disconnected\n", i);
+                continue;
+            }
             
             if (revents & POLLIN) {
                 recv(client.socket, buffer, sizeof(buffer), 0);
                 relay_message(i);
                 printf("%d: %s", i, buffer);
-            }
-
-            if (revents & (POLLERR | POLLHUP)) {
-                close(client.socket);
-                printf("Client %d disconnected\n", i);
             }
         }
     }
